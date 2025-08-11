@@ -1,0 +1,71 @@
+seed_everything: 1234
+data:
+  train:
+    iemocap: /data/fast1/wjkang/data/iemocap/iemocap_preprocessed.hf
+    esd: /data/fast1/wjkang/data/esd/esd_english_preprocessed.hf
+    expresso: [
+      /data/fast1/wjkang/data/expresso_hf/expresso_train_preprocessed_chunk0.hf,
+      /data/fast1/wjkang/data/expresso_hf/expresso_train_preprocessed_chunk1.hf,
+      /data/fast1/wjkang/data/expresso_hf/expresso_train_preprocessed_chunk2.hf,
+      /data/fast1/wjkang/data/expresso_hf/expresso_train_preprocessed_chunk3.hf,
+      /data/fast1/wjkang/data/expresso_hf/expresso_train_preprocessed_chunk4.hf,
+      /data/fast1/wjkang/data/expresso_hf/expresso_train_preprocessed_chunk5.hf
+    ]
+  val:
+    esd: /data/fast1/wjkang/data/esd/esd_english_preprocessed.hf
+    expresso: /data/fast1/wjkang/data/expresso_hf/expresso_dev_preprocessed.hf
+  holdout_styles: []
+model:
+  style_prompt_encoder:
+    type: google-t5/t5-base
+    freeze: True
+  speech_style_encoder:
+    type: emotion2vec/emotion2vec_base  # microsoft/wavlm-base-plus, emotion2vec/emotion2vec_base
+    freeze: False
+  speech_encoder_hidden_size: 768
+  embedding_channels: 512
+  encoder_projection_layers: 1
+audio:
+  sampling_rate: 16000
+  batch_segment_len_sec: 8
+losses:
+  mse_loss:
+    use: False
+    weight: 0.5
+  cossim_loss:
+    use: False
+    weight: 0.5
+  clip_loss:
+    use: True
+    weight: 1.0
+  style_class_loss:
+    use: True
+    weight: 0.5
+    pretrain_epochs: 5
+  modality_disc_loss:
+    use: True
+    weight: 0.1
+    delay_epochs: 5
+train:
+  num_gpus: 1
+  num_workers: 8
+  optim_e:
+    lr: 5e-5
+    beta1: 0.9
+    beta2: 0.999
+  optim_s:
+    lr: 5e-5
+    beta1: 0.9
+    beta2: 0.999
+  optim_d:
+    lr: 2e-5
+    beta1: 0.9
+    beta2: 0.999
+  batch_size: 32
+  epochs: 105
+  use_amp: True
+  amp_dtype: bf16
+log:
+  checkpoint_dir: /data/fast1/wjkang/checkpoints/retrieval_bf16
+  log_dir: logs
+  log_interval: 10
