@@ -17,7 +17,7 @@ data:
   holdout_styles: []
 model:
   style_prompt_encoder:
-    type: google-bert/bert-base-uncased
+    type: google-t5/t5-base
     freeze: True
   speech_style_encoder:
     type: microsoft/wavlm-base-plus
@@ -29,13 +29,7 @@ audio:
   sampling_rate: 16000
   batch_segment_len_sec: 8
 losses:
-  mse_loss:
-    use: False
-    weight: 0.5
-  cossim_loss:
-    use: False
-    weight: 0.5
-  clip_loss:
+  contrastive_loss:
     use: True
     weight: 1.0
   style_class_loss:
@@ -44,8 +38,8 @@ losses:
     pretrain_epochs: 5
   modality_disc_loss:
     use: True
-    weight: 0.05
-    delay_epochs: 10
+    weight: 0.1
+    delay_epochs: 5
 train:
   num_gpus: 1
   num_workers: 8
