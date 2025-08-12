@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class ClipContrastiveLoss(nn.Module):
+class ContrastiveLoss(nn.Module):
     def __init__(self, learnable_temperature=True, init_temp=0.07):
         super().__init__()
         if learnable_temperature:

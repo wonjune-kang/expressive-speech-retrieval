@@ -72,14 +72,6 @@ JOINT_STYLES_TO_LABEL_IDX_MAPPING = {
 }
 
 
-def cosine_similarity_loss(emb1, emb2):
-    # Cosine similarity between corresponding rows (dim=1 gives [batch_size]
-    # result).
-    cos_sim = F.cosine_similarity(emb1, emb2, dim=1)
-    loss = 1 - cos_sim
-    return loss.mean()
-
-
 def compute_num_speech_embeds(audio_samples, sr=16000):
     """
     Computes the number of embeddings that will be produced by the speech

@@ -11,7 +11,7 @@ from dataset_utils import (
     parse_dataset_config,
     clean_datasets
 )
-from model.clip_loss import ClipContrastiveLoss
+from model.contrastive_loss import ClipContrastiveLoss
 from model.modality_disc import ModalityDiscriminator
 from model.speech_style_encoder import SpeechStyleEncoder
 from model.style_classifier import StyleClassifier
@@ -19,7 +19,6 @@ from model.style_prompt_encoder import StylePromptEncoder
 from utils import (
     JOINT_STYLES_TO_LABEL_IDX_MAPPING,
     collate_batch,
-    cosine_similarity_loss,
     plot_embeddings_tsne,
 )
 from writer import MyWriter
@@ -83,22 +82,18 @@ class Trainer():
         self.num_epochs = self.config.train.epochs
 
         # Flags for using various losses.
-        self.use_mse_loss = self.config.losses.mse_loss.use
-        self.use_cossim_loss = self.config.losses.cossim_loss.use
-        self.use_clip_loss = self.config.losses.clip_loss.use
+        self.use_contrastive_loss = self.config.losses.contrastive_loss.use
         self.use_style_class_loss = self.config.losses.style_class_loss.use
         self.use_modality_disc_loss = self.config.losses.modality_disc_loss.use
 
         # Loss weighting.
-        self.mse_loss_weight = self.config.losses.mse_loss.weight
-        self.cossim_loss_weight = self.config.losses.cossim_loss.weight
-        self.clip_loss_weight = self.config.losses.clip_loss.weight
+        self.contrastive_loss_weight = self.config.losses.contrastive_loss.weight
         self.style_class_loss_weight = self.config.losses.style_class_loss.weight
         self.modality_disc_loss_weight = self.config.losses.modality_disc_loss.weight
 
-        if self.use_clip_loss:
-            self.clip_loss = ClipContrastiveLoss()
-            self.clip_loss.to(self.device)
+        if self.use_contrastive_loss:
+            self.contrastive_loss = ClipContrastiveLoss()
+            self.contrastive_loss.to(self.device)
 
         if self.use_style_class_loss:
             self.aux_style_classifier = StyleClassifier(
@@ -168,8 +163,8 @@ class Trainer():
         self.optim_e.load_state_dict(checkpoint["optim_e"])
         # self.lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
 
-        if self.use_clip_loss:
-            self.clip_loss.load_state_dict(checkpoint["clip_loss"])
+        if self.use_contrastive_loss:
+            self.contrastive_loss.load_state_dict(checkpoint["contrastive_loss"])
         if self.use_style_class_loss:
             self.aux_style_classifier.load_state_dict(checkpoint["aux_style_classifier"])
             self.optim_s.load_state_dict(checkpoint["optim_s"])
@@ -323,30 +318,14 @@ class Trainer():
                     total_encoder_loss = 0.0
                     losses = {}
 
-                    # MSE loss.
-                    if self.use_mse_loss and epoch >= self.style_class_pretrain_epochs:
-                        mse_loss = F.mse_loss(
-                            speech_embeds, text_embeds
-                        )
-                        total_encoder_loss += self.mse_loss_weight * mse_loss
-                        losses["mse_loss"] = mse_loss.item()
-
-                    # Cosine similarity loss.
-                    if self.use_cossim_loss and epoch >= self.style_class_pretrain_epochs:
-                        cossim_loss = cosine_similarity_loss(
-                            speech_embeds, text_embeds
-                        )
-                        total_encoder_loss += self.cossim_loss_weight * cossim_loss
-                        losses["cossim_loss"] = cossim_loss.item()
-
-                    # Contrastive CLIP loss.
-                    if self.use_clip_loss and epoch >= self.style_class_pretrain_epochs:
-                        clip_loss = self.clip_loss(
+                    # Contrastive loss.
+                    if self.use_contrastive_loss and epoch >= self.style_class_pretrain_epochs:
+                        contrastive_loss = self.contrastive_loss(
                             audio_embeds=speech_embeds,
                             text_embeds=text_embeds,
                         )
-                        total_encoder_loss += clip_loss
-                        losses["clip_loss"] = clip_loss.item()
+                        total_encoder_loss += contrastive_loss
+                        losses["contrastive_loss"] = contrastive_loss.item()
 
                     # Auxiliary style classification loss for speech encoder.
                     if self.use_style_class_loss:
@@ -454,8 +433,8 @@ class Trainer():
         # Validation loop
         self.style_prompt_encoder.eval()
         self.speech_style_encoder.eval()
-        if self.use_clip_loss:
-            self.clip_loss.eval()
+        if self.use_contrastive_loss:
+            self.contrastive_loss.eval()
         if self.use_style_class_loss:
             self.aux_style_classifier.eval()
             all_style_preds = []
@@ -505,24 +484,12 @@ class Trainer():
                     losses = {}
 
                     # Loss computation.
-                    if self.use_mse_loss and epoch >= self.style_class_pretrain_epochs:
-                        mse_loss = F.mse_loss(
-                            speech_embeds, text_embeds
-                        )
-                        losses["mse_loss"] = mse_loss.item()
-
-                    if self.use_cossim_loss and epoch >= self.style_class_pretrain_epochs:
-                        cossim_loss = cosine_similarity_loss(
-                            speech_embeds, text_embeds
-                        )
-                        losses["cossim_loss"] = cossim_loss.item()
-
-                    if self.use_clip_loss and epoch >= self.style_class_pretrain_epochs:
-                        clip_loss = self.clip_loss(
+                    if self.use_contrastive_loss and epoch >= self.style_class_pretrain_epochs:
+                        contrastive_loss = self.contrastive_loss(
                             audio_embeds=speech_embeds,
                             text_embeds=text_embeds,
                         )
-                        losses["clip_loss"] = clip_loss.item()
+                        losses["contrastive_loss"] = contrastive_loss.item()
 
                     # Auxiliary style classification loss for speech encoder.
                     if self.use_style_class_loss:
@@ -601,8 +568,8 @@ class Trainer():
                 "epoch": epoch,
                 "step": self.step,
             }
-            if self.use_clip_loss:
-                save_dict["clip_loss"] = self.clip_loss.state_dict()
+            if self.use_contrastive_loss:
+                save_dict["contrastive_loss"] = self.contrastive_loss.state_dict()
             if self.use_style_class_loss:
                 save_dict["aux_style_classifier"] = self.aux_style_classifier.state_dict()
                 save_dict["optim_s"] = self.optim_s.state_dict()
