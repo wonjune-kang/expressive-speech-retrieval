@@ -12,7 +12,7 @@ omegaconf==2.3.0
 sentencepiece==0.2.0
 tensorboard==2.19.0
 tokenizers==0.21.1
-torch==2.6.0+cu126
-torchaudio==2.6.0+cu126
+torch==2.6.0
+torchaudio==2.6.0
 torchtext==0.6.0
 transformers==4.51.3
