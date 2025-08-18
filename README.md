@@ -62,7 +62,7 @@ python run_retrieval_eval.py \
   -p /path/to/checkpoint/roberta_emotion2vec.pt
 ```
 
-This will print per-class retrieval performance for ESD and Expresso. If using the provided retrieval trial pickle file and checkpoint, you should get:
+This will compute and print per-class retrieval performance for ESD and Expresso. If using the provided retrieval trial pickle files and checkpoint, you should get:
 
 ```
 ...
